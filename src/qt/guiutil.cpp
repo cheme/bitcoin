@@ -1,23 +1,24 @@
-#include "guiutil.h"
-#include "bitcoinaddressvalidator.h"
-#include "walletmodel.h"
-#include "bitcoinunits.h"
-#include "util.h"
-#include "init.h"
-
 #include <QString>
 #include <QDateTime>
 #include <QDoubleValidator>
 #include <QFont>
 #include <QLineEdit>
 #include <QUrl>
-#include <QTextDocument> // For Qt::escape
 #include <QAbstractItemView>
 #include <QApplication>
 #include <QClipboard>
 #include <QFileDialog>
 #include <QDesktopServices>
+#include <QStandardPaths>
 #include <QThread>
+#include <QUrlQuery>
+
+#include "guiutil.h"
+#include "bitcoinaddressvalidator.h"
+#include "walletmodel.h"
+#include "bitcoinunits.h"
+#include "util.h"
+#include "init.h"
 
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
@@ -84,7 +85,9 @@ bool parseBitcoinURI(const QUrl &uri, SendCoinsRecipient *out)
     SendCoinsRecipient rv;
     rv.address = uri.path();
     rv.amount = 0;
-    QList<QPair<QString, QString> > items = uri.queryItems();
+    QUrlQuery uriQuery = QUrlQuery(uri);
+    QList<QPair<QString, QString> > items = uriQuery.queryItems();
+    uriQuery.~QUrlQuery();
     for (QList<QPair<QString, QString> >::iterator i = items.begin(); i != items.end(); i++)
     {
         bool fShouldReturnFalse = false;
@@ -137,7 +140,7 @@ bool parseBitcoinURI(QString uri, SendCoinsRecipient *out)
 
 QString HtmlEscape(const QString& str, bool fMultiLine)
 {
-    QString escaped = Qt::escape(str);
+    QString escaped = str.toHtmlEscaped();
     if(fMultiLine)
     {
         escaped = escaped.replace("\n", "<br>\n");
@@ -172,7 +175,7 @@ QString getSaveFileName(QWidget *parent, const QString &caption,
     QString myDir;
     if(dir.isEmpty()) // Default to user documents location
     {
-        myDir = QDesktopServices::storageLocation(QDesktopServices::DocumentsLocation);
+        myDir = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
     }
     else
     {
@@ -258,7 +261,8 @@ bool ToolTipToRichTextFilter::eventFilter(QObject *obj, QEvent *evt)
     {
         QWidget *widget = static_cast<QWidget*>(obj);
         QString tooltip = widget->toolTip();
-        if(tooltip.size() > size_threshold && !tooltip.startsWith("<qt/>") && !Qt::mightBeRichText(tooltip))
+        if(tooltip.size() > size_threshold && !tooltip.startsWith("<")) 
+        //if(tooltip.size() > size_threshold && !tooltip.startsWith("<qt/>") && !Qt::mightBeRichText(tooltip))
         {
             // Prefix <qt/> to make sure Qt detects this as rich text
             // Escape the current message as HTML and replace \n by <br>
